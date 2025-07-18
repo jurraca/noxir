@@ -12,3 +12,14 @@ information =
   )
 
 config :noxir, :information, information
+
+auth_required = System.get_env("AUTH_REQUIRED", "false") |> String.downcase() == "true"
+allowed_pubkeys = 
+  case System.get_env("ALLOWED_PUBKEYS") do
+    nil -> []
+    pubkeys -> String.split(pubkeys, ",") |> Enum.map(&String.trim/1)
+  end
+
+config :noxir, :auth,
+  required: auth_required,
+  allowed_pubkeys: allowed_pubkeys

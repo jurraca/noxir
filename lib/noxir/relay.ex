@@ -30,22 +30,46 @@ defmodule Noxir.Relay do
   def handle_in({data, opcode: opcode}, state) do
     case Jason.decode(data) do
       {:ok, ["EVENT", %{"id" => id} = event]} ->
-        if valid?(event) do
+        with true <- valid?(event),
+          :ok <- check_auth(event["pubkey"]) do
+
           event
           |> handle_nostr_event()
           |> resp_nostr_ok(id, opcode, state)
+
         else
-          resp_nostr_notice("Invalid message", opcode, state)
+          false ->
+            resp_nostr_notice("Invalid message", opcode, state)
+
+          {:error, :auth_required} ->
+            send_auth_challenge(opcode, state)
+
+          {:error, :not_authorized} ->
+            resp_nostr_ok({:error, "blocked: not authorized"}, id, opcode, state)
         end
 
       {:ok, ["REQ", subscription_id | filters]} ->
-        subscription_id
-        |> handle_nostr_req(filters)
-        |> resp_nostr_event_and_eose(opcode, state)
+        case get_authenticated_pubkey() do
+          nil ->
+            send_auth_challenge(opcode, state)
+
+          :ok ->
+            subscription_id
+            |> handle_nostr_req(filters)
+            |> resp_nostr_event_and_eose(opcode, state)
+
+          {:error, :not_authorized} ->
+            resp_nostr_notice("blocked: not authorized", opcode, state)
+        end
 
       {:ok, ["CLOSE", subscription_id]} ->
         handle_nostr_close(subscription_id)
         resp_nostr_notice("Closed sub_id: `#{subscription_id}`", opcode, state)
+
+      {:ok, ["AUTH", %{"kind" => 22242} = auth_event]} ->
+        auth_event
+        |> handle_nostr_auth()
+        |> resp_nostr_ok(Map.get(auth_event, "id", ""), opcode, state)
 
       _ ->
         resp_nostr_notice("Invalid message", opcode, state)
@@ -97,6 +121,9 @@ defmodule Noxir.Relay do
        when kind == 0 or kind == 3 or (10_000 <= kind and kind < 20_000),
        do: handle_nostr_event(event, :replaceable)
 
+  defp handle_nostr_event(%{"kind" => 22242} = _event),
+    do: {:error, "AUTH events are not stored"}
+
   defp handle_nostr_event(%{"kind" => kind} = event) when 20_000 <= kind and kind < 30_000,
     do: handle_nostr_event(event, :ephemeral)
 
@@ -104,11 +131,17 @@ defmodule Noxir.Relay do
     do: handle_nostr_event(event, :parameterized)
 
   defp handle_nostr_event(event, type \\ :unknown) do
-    case type do
-      :regular -> store_event(event)
-      t when t in [:replaceable, :parameterized] -> replace_event(event, t)
-      :ephemeral -> {:ok, ""}
-      :unknown -> store_event(event)
+    case EventValidator.validate(event) do
+      {:ok, validated_event} ->
+        case type do
+          :regular -> store_event(validated_event)
+          t when t in [:replaceable, :parameterized] -> replace_event(validated_event, t)
+          :ephemeral -> {:ok, ""}
+          :unknown -> store_event(validated_event)
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -239,4 +272,70 @@ defmodule Noxir.Relay do
   defp resp_nostr_eose_msg(sub_id), do: Jason.encode!(["EOSE", sub_id])
 
   defp resp_nostr_event_msg(msg), do: Jason.encode!(["NOTICE", msg])
+
+  defp handle_nostr_auth(%{"kind" => 22242, "tags" => tags, "pubkey" => pubkey} = auth_event) do
+    with {:ok, _} <- EventValidator.validate(auth_event),
+         true <- Noxir.AuthConfig.allowed_pubkey?(pubkey),
+         challenge = Memento.transaction!(fn -> Connection.get_auth_challenge(self()) end),
+         true <- validate_auth_event(tags, challenge) do
+      Memento.transaction!(fn ->
+        Connection.clear_auth_challenge(self())
+        Connection.set_authenticated_pubkey(self(), pubkey)
+      end)
+
+      {:ok, ""}
+    else
+      {:error, reason} -> {:error, reason}
+      false -> {:error, "invalid: auth event validation failed"}
+    end
+  end
+
+  defp handle_nostr_auth(_), do: {:error, "invalid: AUTH event must be kind 22242"}
+
+  defp validate_auth_event(tags, challenge) do
+    has_challenge_tag =
+      Enum.any?(tags, fn
+        ["challenge", ^challenge | _] -> true
+        _ -> false
+      end)
+
+    has_relay_tag =
+      Enum.any?(tags, fn
+        ["relay", _relay_url | _] -> true
+        _ -> false
+      end)
+
+    has_challenge_tag and has_relay_tag
+  end
+
+  defp check_auth(pubkey) do
+    auth_required = Noxir.AuthConfig.auth_required?()
+
+    if not auth_required do
+      :ok
+    else
+      Noxir.AuthConfig.allowed_pubkey?(pubkey)
+    end
+  end
+
+  defp get_authenticated_pubkey do
+    # Check if connection is authenticated by looking for stored pubkey
+    case Memento.transaction(fn ->
+           Connection.get_authenticated_pubkey(self())
+         end) do
+      {:ok, pubkey} -> pubkey
+      _ -> nil
+    end
+  end
+
+  defp send_auth_challenge(opcode, state) do
+    challenge = :crypto.strong_rand_bytes(16) |> Base.encode16(case: :lower)
+
+    Memento.transaction!(fn ->
+      Connection.set_auth_challenge(self(), challenge)
+    end)
+
+    msg = Jason.encode!(["AUTH", challenge])
+    {:push, {opcode, msg}, state}
+  end
 end

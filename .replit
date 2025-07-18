@@ -1,0 +1,30 @@
+modules = ["elixir-1_18"]
+[agent]
+expertMode = true
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Noxir Relay"
+
+[[workflows.workflow]]
+name = "Noxir Relay"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "mix deps.get && mix run --no-halt"
+
+[[ports]]
+localPort = 4000
+externalPort = 80

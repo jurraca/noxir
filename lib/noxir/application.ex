@@ -7,6 +7,8 @@ defmodule Noxir.Application do
 
   @impl Application
   def start(_, _) do
+    Noxir.AuthConfig.init()
+
     children = [
       {Noxir.Store, []},
       {Bandit, scheme: :http, plug: Noxir.Router, port: 4000}

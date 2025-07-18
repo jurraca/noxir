@@ -2,7 +2,7 @@ defmodule Noxir.Store.Connection do
   @moduledoc false
 
   use Memento.Table,
-    attributes: [:pid, :subscriptions]
+    attributes: [:pid, :subscriptions, :auth_challenge, :authenticated_pubkey]
 
   alias Memento.Query
   alias Noxir.Store.Filter
@@ -11,7 +11,9 @@ defmodule Noxir.Store.Connection do
   def open(pid) do
     Query.write(%__MODULE__{
       pid: pid,
-      subscriptions: []
+      subscriptions: [],
+      auth_challenge: nil,
+      authenticated_pubkey: nil
     })
   end
 
@@ -58,5 +60,43 @@ defmodule Noxir.Store.Connection do
     __MODULE__
     |> Query.read(pid)
     |> Map.get(:subscriptions)
+  end
+
+  @spec set_auth_challenge(pid(), binary()) :: Memento.Table.record() | no_return()
+  def set_auth_challenge(pid, challenge) do
+    __MODULE__
+    |> Query.read(pid)
+    |> Map.put(:auth_challenge, challenge)
+    |> Query.write()
+  end
+
+  @spec get_auth_challenge(pid()) :: binary() | nil
+  def get_auth_challenge(pid) do
+    __MODULE__
+    |> Query.read(pid)
+    |> Map.get(:auth_challenge)
+  end
+
+  @spec clear_auth_challenge(pid()) :: Memento.Table.record() | no_return()
+  def clear_auth_challenge(pid) do
+    __MODULE__
+    |> Query.read(pid)
+    |> Map.put(:auth_challenge, nil)
+    |> Query.write()
+  end
+
+  @spec set_authenticated_pubkey(pid(), binary()) :: Memento.Table.record() | no_return()
+  def set_authenticated_pubkey(pid, pubkey) do
+    __MODULE__
+    |> Query.read(pid)
+    |> Map.put(:authenticated_pubkey, pubkey)
+    |> Query.write()
+  end
+
+  @spec get_authenticated_pubkey(pid()) :: binary() | nil
+  def get_authenticated_pubkey(pid) do
+    __MODULE__
+    |> Query.read(pid)
+    |> Map.get(:authenticated_pubkey)
   end
 end
