@@ -29,9 +29,13 @@ defmodule Noxir.Relay do
   def handle_in({data, opcode: opcode}, state) do
     case Jason.decode(data) do
       {:ok, ["EVENT", %{"id" => id} = event]} ->
-        event
-        |> handle_nostr_event()
-        |> resp_nostr_ok(id, opcode, state)
+        if valid?(event) do
+          event
+          |> handle_nostr_event()
+          |> resp_nostr_ok(id, opcode, state)
+        else
+          resp_nostr_notice("Invalid message", opcode, state)
+        end
 
       {:ok, ["REQ", subscription_id | filters]} ->
         subscription_id
@@ -142,6 +146,43 @@ defmodule Noxir.Relay do
 
   defp resp_nostr_ok(res, id, opcode, state) do
     {:push, {opcode, resp_nostr_ok_msg(res, id)}, state}
+  end
+
+  defp valid?(%{} = event) do
+    valid_id?(event) and valid_sig?(event)
+  end
+
+  defp valid_id?(%{"id" => id} = event) do
+    compute_id(event) == id
+  end
+
+  defp valid_sig?(%{"id" => id, "sig" => sig, "pubkey" => pubkey}) do
+    Secp256k1.schnorr_valid?(
+      Base.decode16!(sig, case: :lower),
+      Base.decode16!(id, case: :lower),
+      Base.decode16!(pubkey, case: :lower)
+    )
+  end
+
+  @spec compute_id(event :: map()) :: binary()
+  defp compute_id(%{} = event) do
+    :sha256
+    |> :crypto.hash(serialize(event))
+    |> Base.encode16(case: :lower)
+  end
+
+  @doc """
+  Serialize event into Nostr ID format
+  """
+  @spec serialize(event :: map()) :: String.t()
+  def serialize(%{
+        "pubkey" => pubkey,
+        "kind" => kind,
+        "tags" => tags,
+        "created_at" => created_at,
+        "content" => content
+      }) do
+    Jason.encode!([0, pubkey, created_at, kind, tags, content])
   end
 
   defp handle_nostr_req(sub_id, filters) do

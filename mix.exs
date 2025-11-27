@@ -114,6 +114,9 @@ defmodule Noxir.MixProject do
       {:jason, "~> 1.4"},
       {:memento, "~> 0.3"},
       {:websock_adapter, "~> 0.5"},
+      {:lib_secp256k1, "~> 0.6.0"},
+
+      # dev
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:erlex, github: "bradhanks/erlex", only: [:dev, :test], runtime: false, override: true},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
