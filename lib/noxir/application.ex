@@ -10,6 +10,8 @@ defmodule Noxir.Application do
     Noxir.AuthConfig.init()
 
     children = [
+      {Noxir.SubscriptionIndex, []},
+      {Noxir.Broadcaster, []},
       {Noxir.Store, []},
       {Bandit, scheme: :http, plug: Noxir.Router, port: 4000}
     ]

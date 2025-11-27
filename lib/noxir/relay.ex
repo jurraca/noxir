@@ -110,6 +110,8 @@ defmodule Noxir.Relay do
       Connection.disconnect(self())
     end)
 
+    Noxir.SubscriptionIndex.unregister_all(self())
+
     {:ok, state}
   end
 
@@ -224,6 +226,8 @@ defmodule Noxir.Relay do
       Connection.subscribe(self(), sub_id, filters)
     end)
 
+    Noxir.SubscriptionIndex.register(self(), sub_id, filters)
+
     case Memento.transaction(fn ->
            Event.req(filters)
          end) do
@@ -258,6 +262,8 @@ defmodule Noxir.Relay do
     Memento.transaction!(fn ->
       Connection.close(self(), sub_id)
     end)
+
+    Noxir.SubscriptionIndex.unregister(self(), sub_id)
   end
 
   defp resp_nostr_notice(msg, opcode, state) do

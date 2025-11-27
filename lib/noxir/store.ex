@@ -80,18 +80,7 @@ defmodule Noxir.Store do
 
   @impl GenServer
   def handle_cast({:create_event, event, from}, state) do
-    fn ->
-      Connection.all()
-    end
-    |> Memento.transaction!()
-    |> Enum.map(fn %Connection{pid: pid} -> pid end)
-    |> Enum.filter(fn pid ->
-      pid != from
-    end)
-    |> Enum.each(fn pid ->
-      Process.send(pid, {:create_event, event}, [])
-    end)
-
+    Noxir.Broadcaster.broadcast(event, from)
     {:noreply, state}
   end
 
