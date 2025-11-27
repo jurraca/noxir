@@ -29,3 +29,6 @@ noxir-*.tar
 /priv/plts/*.plt
 /priv/plts/*.plt.hash
 compose.*.yml
+
+/.mix/
+/.hex/

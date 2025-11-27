@@ -25,6 +25,9 @@ outputType = "console"
 task = "shell.exec"
 args = "mix deps.get && mix run --no-halt"
 
+[agent]
+expertMode = true
+
 [[ports]]
 localPort = 4000
 externalPort = 80

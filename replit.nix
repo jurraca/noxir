@@ -1,6 +1,6 @@
 { pkgs }: {
   deps = [
-    pkgs.elixir_1_16
+    pkgs.elixir
     pkgs.autoreconfHook
   ];
 }
