@@ -117,13 +117,6 @@ config :noxir, :auth,
 
 **Rationale**: `:persistent_term` provides extremely fast reads (no process lookup) which is important since the check happens on every message. Updates are infrequent (admin actions) so the update cost is acceptable.
 
-- Index only by author pubkeys (most selective dimension; authorless filters should be rejected by relay policy)
-- ETS-backed refcounting handles overlapping subscriptions from the same connection
-- pg automatically cleans up when connection processes die
-- Subscription ID reuse is handled by unregistering old filters before registering new ones
-
-**Rationale**: This balances efficiency with OTP idioms. The pg module is battle-tested, cluster-aware, and provides O(1) group membership lookups. Each Relay process still owns its filter matching logic, keeping work distributed.
-
 ## JSON Serialization
 
 **Problem**: Nostr protocol uses JSON for all message formats.
