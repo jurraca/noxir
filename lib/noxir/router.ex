@@ -52,7 +52,10 @@ defmodule Noxir.Router do
             contact: Keyword.get(information, :contact, ""),
             supported_nips: [1, 11],
             software: Keyword.get(information, :software, ""),
-            version: "v" <> to_string(Application.spec(:noxir, :vsn))
+            version: "v" <> to_string(Application.spec(:noxir, :vsn)),
+            limitation: %{
+              authors_required: true
+            }
           })
         )
 

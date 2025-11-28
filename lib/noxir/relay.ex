@@ -54,9 +54,17 @@ defmodule Noxir.Relay do
             send_auth_challenge(opcode, state)
 
           :ok ->
-            subscription_id
-            |> handle_nostr_req(filters)
-            |> resp_nostr_event_and_eose(opcode, state)
+            case handle_nostr_req(subscription_id, filters) do
+              {:error, :no_authors} ->
+                resp_nostr_notice(
+                  "rejected: this relay requires an 'authors' filter for all subscriptions",
+                  opcode,
+                  state
+                )
+
+              result ->
+                resp_nostr_event_and_eose(result, opcode, state)
+            end
 
           {:error, :not_authorized} ->
             resp_nostr_notice("blocked: not authorized", opcode, state)
@@ -222,22 +230,37 @@ defmodule Noxir.Relay do
   end
 
   defp handle_nostr_req(sub_id, filters) do
-    Memento.transaction!(fn ->
-      Connection.subscribe(self(), sub_id, filters)
-    end)
+    if filters_have_authors?(filters) do
+      Memento.transaction!(fn ->
+        Connection.subscribe(self(), sub_id, filters)
+      end)
 
-    Noxir.SubscriptionIndex.register(self(), sub_id, filters)
+      Noxir.SubscriptionIndex.register(self(), sub_id, filters)
 
-    case Memento.transaction(fn ->
-           Event.req(filters)
-         end) do
-      {:ok, data} ->
-        {sub_id, data}
+      case Memento.transaction(fn ->
+             Event.req(filters)
+           end) do
+        {:ok, data} ->
+          {sub_id, data}
 
-      {:error, reason} ->
-        Logger.debug(reason)
-        {sub_id, []}
+        {:error, reason} ->
+          Logger.debug(reason)
+          {sub_id, []}
+      end
+    else
+      {:error, :no_authors}
     end
+  end
+
+  defp filters_have_authors?([]), do: false
+
+  defp filters_have_authors?(filters) do
+    Enum.all?(filters, fn filter ->
+      case Map.get(filter, "authors") do
+        authors when is_list(authors) and authors != [] -> true
+        _ -> false
+      end
+    end)
   end
 
   defp resp_nostr_event_and_eose({sub_id, events}, opcode, state) do
