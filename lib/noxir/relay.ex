@@ -6,6 +6,7 @@ defmodule Noxir.Relay do
   @behaviour WebSock
 
   alias Noxir.Store
+  alias Noxir.EventValidator
   alias Store.Connection
   alias Store.Event
   alias Store.Filter
