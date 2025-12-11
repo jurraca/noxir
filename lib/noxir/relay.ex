@@ -257,7 +257,8 @@ defmodule Noxir.Relay do
   defp filters_have_authors?(filters) do
     Enum.all?(filters, fn filter ->
       case Map.get(filter, "authors") do
-        authors when is_list(authors) and authors != [] -> true
+        [] -> false
+        authors when is_list(authors) -> true
         _ -> false
       end
     end)
