@@ -10,6 +10,8 @@ defmodule Noxir.Relay do
   alias Store.Connection
   alias Store.Event
   alias Store.Filter
+  alias Noxir.EventValidator
+  alias Noxir.Relay.Events
 
   require Logger
 
@@ -152,38 +154,9 @@ defmodule Noxir.Relay do
     end
   end
 
-  defp store_event(event) do
-    case Store.create_event(event) do
-      {:ok, _} ->
-        {:ok, ""}
+  defp store_event(event), do: Events.store(event)
 
-      {:error, reason} ->
-        Logger.debug(reason)
-        {:error, "Something went wrong"}
-    end
-  end
-
-  defp replace_event(event, :replaceable) do
-    case Store.replace_event(event) do
-      {:ok, _} ->
-        {:ok, ""}
-
-      {:error, reason} ->
-        Logger.debug(reason)
-        {:error, "Something went wrong"}
-    end
-  end
-
-  defp replace_event(event, :parameterized) do
-    case Store.replace_event(event, :parameterized) do
-      {:ok, _} ->
-        {:ok, ""}
-
-      {:error, reason} ->
-        Logger.debug(reason)
-        {:error, "Something went wrong"}
-    end
-  end
+  defp replace_event(event, type), do: Events.replace(event, type)
 
   defp resp_nostr_ok(res, id, opcode, state) do
     {:push, {opcode, resp_nostr_ok_msg(res, id)}, state}

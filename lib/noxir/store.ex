@@ -1,6 +1,9 @@
 defmodule Noxir.Store do
   @moduledoc """
-  Utility for `Memento.Table`.
+  Manages Mnesia table initialization and cluster node monitoring.
+  
+  Event storage is handled directly by Relay processes via `Noxir.Relay.Events`,
+  avoiding serialization bottlenecks.
   """
 
   use GenServer
@@ -42,92 +45,6 @@ defmodule Noxir.Store do
   def handle_info({:nodedown, _}, state) do
     {:ok, _} = Memento.add_nodes(Node.list())
     {:noreply, state}
-  end
-
-  @impl GenServer
-  def handle_call({:create_event, event}, {from, _}, state) do
-    result =
-      case Memento.transaction(fn ->
-             Event.create(event)
-           end) do
-        {:ok, ev} ->
-          GenServer.cast(NoxirStore, {:create_event, ev, from})
-          {:ok, ev}
-
-        e ->
-          e
-      end
-
-    {:reply, result, state}
-  end
-
-  def handle_call({:replace_event, event, type}, {from, _}, state) do
-    result =
-      case Memento.transaction(fn ->
-             Event.create(event)
-           end) do
-        {:ok, ev} ->
-          GenServer.cast(NoxirStore, {:create_event, ev, from})
-          GenServer.cast(NoxirStore, {:replace_event, ev, type})
-          {:ok, ev}
-
-        e ->
-          e
-      end
-
-    {:reply, result, state}
-  end
-
-  @impl GenServer
-  def handle_cast({:create_event, event, from}, state) do
-    Task.start(fn ->
-      event
-      |> Noxir.SubscriptionIndex.get_candidates()
-      |> Enum.reject(&(&1 == from))
-      |> Enum.each(fn pid ->
-        Process.send(pid, {:event_published, event}, [])
-      end)
-    end)
-
-    {:noreply, state}
-  end
-
-  def handle_cast({:replace_event, %Event{pubkey: pkey, kind: kind}, :replaceable}, state) do
-    Memento.transaction!(fn ->
-      Event.delete_old(pkey, kind)
-    end)
-
-    {:noreply, state}
-  end
-
-  def handle_cast(
-        {:replace_event, %Event{pubkey: pkey, kind: kind, tags: tags}, :parameterized},
-        state
-      ) do
-    dtags =
-      tags
-      |> Enum.filter(fn
-        ["d", _ | _] -> true
-        _ -> false
-      end)
-      |> Enum.map(fn [_, tag | _] -> tag end)
-
-    Memento.transaction!(fn ->
-      Event.delete_old(pkey, kind, dtags)
-    end)
-
-    {:noreply, state}
-  end
-
-  @spec create_event(Event.t() | map()) :: {:ok, Table.record()} | {:error, any()}
-  def create_event(event) do
-    GenServer.call(NoxirStore, {:create_event, event}, :infinity)
-  end
-
-  @spec replace_event(Event.t() | map(), type :: :replaceable | :parameterized) ::
-          {:ok, Table.record()} | {:error, any()}
-  def replace_event(event, type \\ :replaceable) do
-    GenServer.call(NoxirStore, {:replace_event, event, type}, :infinity)
   end
 
   @spec change_to_existing_atom_key(map()) :: map()
