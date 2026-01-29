@@ -80,7 +80,15 @@ defmodule Noxir.Store do
 
   @impl GenServer
   def handle_cast({:create_event, event, from}, state) do
-    Noxir.Broadcaster.broadcast(event, from)
+    Task.start(fn ->
+      event
+      |> Noxir.SubscriptionIndex.get_candidates()
+      |> Enum.reject(&(&1 == from))
+      |> Enum.each(fn pid ->
+        Process.send(pid, {:event_published, event}, [])
+      end)
+    end)
+
     {:noreply, state}
   end
 

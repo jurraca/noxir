@@ -75,12 +75,12 @@ Preferred communication style: Simple, everyday language.
 
 **Solution**: Uses OTP's `pg` (process groups) for targeted event routing:
 - `Noxir.SubscriptionIndex` - Manages pg groups keyed by author pubkeys. Connections join `{:author, pubkey}` groups based on their subscription filters.
-- `Noxir.Broadcaster` - Dedicated GenServer that handles event fan-out, keeping the Store out of the broadcast hot path.
+- `Noxir.Store` - After persisting events, spawns a Task for fan-out to avoid blocking the Store GenServer.
 
 **Flow**:
 1. Client sends REQ → Relay caches subscriptions in process state, registers with SubscriptionIndex (joins author groups), persists to Mnesia
-2. Event arrives → Store persists → casts to Broadcaster (sends `:event_published` message)
-3. Broadcaster queries SubscriptionIndex for candidates (pids subscribed to event's author)
+2. Event arrives → Store persists → spawns Task for fan-out (sends `:event_published` message to candidates)
+3. Task queries SubscriptionIndex for candidates (pids subscribed to event's author)
 4. Only candidate pids receive the event → each runs `Filter.match?/2` against cached subscriptions for final confirmation
 
 **Design Decisions**:
