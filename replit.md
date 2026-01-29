@@ -76,6 +76,7 @@ Preferred communication style: Simple, everyday language.
 **Solution**: Uses OTP's `pg` (process groups) for targeted event routing:
 - `Noxir.SubscriptionIndex` - Manages pg groups keyed by author pubkeys. Connections join `{:author, pubkey}` groups based on their subscription filters.
 - `Noxir.Relay.Events` - Handles event storage directly in the Relay process, avoiding GenServer serialization bottlenecks.
+- `Noxir.Relay.Auth` - Handles NIP-42 authentication: challenge generation, event verification, and authorization checks.
 - `Noxir.Store` - GenServer that handles Mnesia table initialization and cluster node monitoring only.
 
 **Flow**:
