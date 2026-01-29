@@ -78,12 +78,13 @@ Preferred communication style: Simple, everyday language.
 - `Noxir.Broadcaster` - Dedicated GenServer that handles event fan-out, keeping the Store out of the broadcast hot path.
 
 **Flow**:
-1. Client sends REQ → Relay registers with SubscriptionIndex (joins author groups)
-2. Event arrives → Store persists → casts to Broadcaster
+1. Client sends REQ → Relay caches subscriptions in process state, registers with SubscriptionIndex (joins author groups), persists to Mnesia
+2. Event arrives → Store persists → casts to Broadcaster (sends `:event_published` message)
 3. Broadcaster queries SubscriptionIndex for candidates (pids subscribed to event's author)
-4. Only candidate pids receive the event → each runs `Filter.match?/2` locally for final confirmation
+4. Only candidate pids receive the event → each runs `Filter.match?/2` against cached subscriptions for final confirmation
 
 **Design Decisions**:
+- Subscriptions are cached in the WebSocket connection process state for fast O(1) lookups during event matching, avoiding Mnesia transactions on every incoming event
 - Index only by author pubkeys (most selective dimension)
 - Authorless filters are rejected with a NOTICE - this is intentional relay policy to prevent spam
 - ETS-backed refcounting handles overlapping subscriptions from the same connection
