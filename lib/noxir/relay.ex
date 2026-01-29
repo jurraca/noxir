@@ -14,7 +14,7 @@ defmodule Noxir.Relay do
   require Logger
 
   @impl WebSock
-  def init(options) do
+  def init(_options) do
     pid = self()
 
     Memento.transaction!(fn ->
@@ -23,7 +23,7 @@ defmodule Noxir.Relay do
 
     Process.send_after(pid, :ping, 30_000)
 
-    {:ok, options}
+    {:ok, %{subscriptions: []}}
   end
 
   @impl WebSock
@@ -54,7 +54,7 @@ defmodule Noxir.Relay do
             send_auth_challenge(opcode, state)
 
           :ok ->
-            case handle_nostr_req(subscription_id, filters) do
+            case handle_nostr_req(subscription_id, filters, state) do
               {:error, :no_authors} ->
                 resp_nostr_notice(
                   "rejected: this relay requires an 'authors' filter for all subscriptions",
@@ -62,8 +62,8 @@ defmodule Noxir.Relay do
                   state
                 )
 
-              result ->
-                resp_nostr_event_and_eose(result, opcode, state)
+              {result, new_state} ->
+                resp_nostr_event_and_eose(result, opcode, new_state)
             end
 
           {:error, :not_authorized} ->
@@ -71,8 +71,8 @@ defmodule Noxir.Relay do
         end
 
       {:ok, ["CLOSE", subscription_id]} ->
-        handle_nostr_close(subscription_id)
-        resp_nostr_notice("Closed sub_id: `#{subscription_id}`", opcode, state)
+        new_state = handle_nostr_close(subscription_id, state)
+        resp_nostr_notice("Closed sub_id: `#{subscription_id}`", opcode, new_state)
 
       {:ok, ["AUTH", %{"kind" => 22242} = auth_event]} ->
         auth_event
@@ -91,12 +91,9 @@ defmodule Noxir.Relay do
     {:push, {:ping, ""}, state}
   end
 
-  def handle_info({:create_event, %Event{} = event}, state) do
+  def handle_info({:event_published, %Event{} = event}, state) do
     msgs =
-      fn ->
-        Connection.get_subscriptions(self())
-      end
-      |> Memento.transaction!()
+      state.subscriptions
       |> Enum.filter(fn {_, filters} ->
         Filter.match?(filters, event)
       end)
@@ -192,60 +189,31 @@ defmodule Noxir.Relay do
     {:push, {opcode, resp_nostr_ok_msg(res, id)}, state}
   end
 
-  defp valid?(%{} = event) do
-    valid_id?(event) and valid_sig?(event)
-  end
-
-  defp valid_id?(%{"id" => id} = event) do
-    compute_id(event) == id
-  end
-
-  defp valid_sig?(%{"id" => id, "sig" => sig, "pubkey" => pubkey}) do
-    Secp256k1.schnorr_valid?(
-      Base.decode16!(sig, case: :lower),
-      Base.decode16!(id, case: :lower),
-      Base.decode16!(pubkey, case: :lower)
-    )
-  end
-
-  @spec compute_id(event :: map()) :: binary()
-  defp compute_id(%{} = event) do
-    :sha256
-    |> :crypto.hash(serialize(event))
-    |> Base.encode16(case: :lower)
-  end
-
-  @doc """
-  Serialize event into Nostr ID format
-  """
-  @spec serialize(event :: map()) :: String.t()
-  def serialize(%{
-        "pubkey" => pubkey,
-        "kind" => kind,
-        "tags" => tags,
-        "created_at" => created_at,
-        "content" => content
-      }) do
-    Jason.encode!([0, pubkey, created_at, kind, tags, content])
-  end
-
-  defp handle_nostr_req(sub_id, filters) do
+  defp handle_nostr_req(sub_id, filters, state) do
     if filters_have_authors?(filters) do
+      # Parse filters into Filter structs for caching
+      parsed_filters = Enum.map(filters, &struct(Filter, Store.change_to_existing_atom_key(&1)))
+
+      # Still write to Mnesia for persistence across reconnects
       Memento.transaction!(fn ->
-        Connection.subscribe(self(), sub_id, filters)
+        Connection.subscribe(self(), sub_id, parsed_filters)
       end)
 
       Noxir.SubscriptionIndex.register(self(), sub_id, filters)
+
+      # Cache subscriptions in state (replace if same sub_id exists)
+      new_subscriptions = List.keystore(state.subscriptions, sub_id, 0, {sub_id, parsed_filters})
+      new_state = %{state | subscriptions: new_subscriptions}
 
       case Memento.transaction(fn ->
              Event.req(filters)
            end) do
         {:ok, data} ->
-          {sub_id, data}
+          {{sub_id, data}, new_state}
 
         {:error, reason} ->
           Logger.debug(reason)
-          {sub_id, []}
+          {{sub_id, []}, new_state}
       end
     else
       {:error, :no_authors}
@@ -282,12 +250,15 @@ defmodule Noxir.Relay do
     {:push, msgs, state}
   end
 
-  defp handle_nostr_close(sub_id) do
+  defp handle_nostr_close(sub_id, state) do
     Memento.transaction!(fn ->
       Connection.close(self(), sub_id)
     end)
 
     Noxir.SubscriptionIndex.unregister(self(), sub_id)
+
+    # Remove from cached subscriptions
+    %{state | subscriptions: List.keydelete(state.subscriptions, sub_id, 0)}
   end
 
   defp resp_nostr_notice(msg, opcode, state) do

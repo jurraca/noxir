@@ -39,7 +39,7 @@ defmodule Noxir.Broadcaster do
     |> SubscriptionIndex.get_candidates()
     |> Enum.reject(&(&1 == from_pid))
     |> Enum.each(fn pid ->
-      Process.send(pid, {:create_event, event}, [])
+      Process.send(pid, {:event_published, event}, [])
     end)
 
     {:noreply, state}
