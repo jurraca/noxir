@@ -143,20 +143,16 @@ defmodule Noxir.Relay do
     case EventValidator.validate(event) do
       {:ok, validated_event} ->
         case type do
-          :regular -> store_event(validated_event)
-          t when t in [:replaceable, :parameterized] -> replace_event(validated_event, t)
+          :regular -> Events.store(validated_event)
+          t when t in [:replaceable, :parameterized] -> Events.replace(validated_event, t)
           :ephemeral -> {:ok, ""}
-          :unknown -> store_event(validated_event)
+          :unknown -> Events.store(validated_event)
         end
 
       {:error, reason} ->
         {:error, reason}
     end
   end
-
-  defp store_event(event), do: Events.store(event)
-
-  defp replace_event(event, type), do: Events.replace(event, type)
 
   defp resp_nostr_ok(res, id, opcode, state) do
     {:push, {opcode, resp_nostr_ok_msg(res, id)}, state}
