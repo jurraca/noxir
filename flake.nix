@@ -1,15 +1,15 @@
 {
-  description = "Nostr Client in Elixir";
+  description = "Nostr relay in Elixir";
 
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs/nixos-25.05;
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-26.05;
   };
 
   outputs = { self, nixpkgs }: let
     overlay = prev: final: rec {
-      erlang = prev.beam.interpreters.erlang_27;
-      beamPackages = prev.beam.packagesWith erlang;
-      elixir = beamPackages.elixir_1_18;
+      beamPackages = prev.beamMinimal29Packages;
+      elixir = beamPackages.elixir_1_20;
+      erlang = beamPackages.erlang_29;
       hex = beamPackages.hex;
     };
 
