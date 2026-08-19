@@ -109,15 +109,15 @@ defmodule Noxir.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:bandit, "~> 1.0"},
+      {:bandit, "~> 1.12.4"},
       {:cors_plug, "~> 3.0"},
       {:jason, "~> 1.4"},
       {:memento, "~> 0.3"},
       {:websock_adapter, "~> 0.5"},
-      {:lib_secp256k1, "~> 0.6.0"},
+      {:lib_secp256k1, "~> 0.7.0"},
 
       # dev
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:erlex, github: "bradhanks/erlex", only: [:dev, :test], runtime: false, override: true},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false}
