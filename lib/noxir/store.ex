@@ -1,145 +1,39 @@
 defmodule Noxir.Store do
   @moduledoc """
-  Utility for `Memento.Table`.
+  Behaviour for Nostr event storage backends.
+
+  Each implementation owns persistence, indexing, and replaceable/parameterized
+  event semantics. Implementations provide a `child_spec/1` for supervision and
+  expose the functional callbacks below. Calls happen in the caller's process —
+  no centralized GenServer serialization.
   """
 
-  use GenServer
+  alias NostrCore.{Event, Filter}
 
-  alias __MODULE__.Connection
-  alias __MODULE__.Event
-  alias Event.TagIndex
-  alias Memento.Table
+  @doc "Supervision child spec for table/schema ownership."
+  @callback child_spec(opts :: keyword()) :: Supervisor.child_spec()
 
-  @tables [
-    Connection,
-    Event,
-    TagIndex
-  ]
+  @doc """
+  Insert a validated event.
 
-  @spec start_link([GenServer.option()]) :: GenServer.on_start()
-  def start_link(_) do
-    GenServer.start_link(__MODULE__, %{}, name: NoxirStore)
-  end
+  Replaceable (kind 0, 3, 10000–19999) and parameterized replaceable
+  (30000–39999) semantics are handled internally — the impl deletes older
+  versions with the same pubkey/kind (and `d` tag for parameterized) as needed.
+  """
+  @callback insert(event :: Event.t()) :: {:ok, Event.t()} | {:error, term()}
 
-  @impl GenServer
-  def init(options) do
-    :ok = :net_kernel.monitor_nodes(true)
+  @doc "Query events matching any of the given filters. Results deduplicated, newest first."
+  @callback query(filters :: [Filter.t()]) :: [Event.t()]
 
-    for table <- @tables do
-      Table.create!(table)
-    end
+  @doc "Fetch a single event by ID. Returns `nil` if not found."
+  @callback get(event_id :: binary()) :: Event.t() | nil
 
-    :ok = Table.wait(@tables, :infinity)
+  @doc "Delete an event by ID (NIP-09)."
+  @callback delete(event_id :: binary()) :: :ok | {:error, term()}
 
-    {:ok, options}
-  end
+  @doc "Count events matching any of the given filters."
+  @callback count(filters :: [Filter.t()]) :: non_neg_integer()
 
-  @impl GenServer
-  def handle_info({:nodeup, _}, state) do
-    {:noreply, state}
-  end
-
-  def handle_info({:nodedown, _}, state) do
-    {:ok, _} = Memento.add_nodes(Node.list())
-    {:noreply, state}
-  end
-
-  @impl GenServer
-  def handle_call({:create_event, event}, {from, _}, state) do
-    result =
-      case Memento.transaction(fn ->
-             Event.create(event)
-           end) do
-        {:ok, ev} ->
-          GenServer.cast(NoxirStore, {:create_event, ev, from})
-          {:ok, ev}
-
-        e ->
-          e
-      end
-
-    {:reply, result, state}
-  end
-
-  def handle_call({:replace_event, event, type}, {from, _}, state) do
-    result =
-      case Memento.transaction(fn ->
-             Event.create(event)
-           end) do
-        {:ok, ev} ->
-          GenServer.cast(NoxirStore, {:create_event, ev, from})
-          GenServer.cast(NoxirStore, {:replace_event, ev, type})
-          {:ok, ev}
-
-        e ->
-          e
-      end
-
-    {:reply, result, state}
-  end
-
-  @impl GenServer
-  def handle_cast({:create_event, event, from}, state) do
-    Noxir.Broadcaster.broadcast(event, from)
-    {:noreply, state}
-  end
-
-  def handle_cast({:replace_event, %Event{pubkey: pkey, kind: kind}, :replaceable}, state) do
-    Memento.transaction!(fn ->
-      Event.delete_old(pkey, kind)
-    end)
-
-    {:noreply, state}
-  end
-
-  def handle_cast(
-        {:replace_event, %Event{pubkey: pkey, kind: kind, tags: tags}, :parameterized},
-        state
-      ) do
-    dtags =
-      tags
-      |> Enum.filter(fn
-        ["d", _ | _] -> true
-        _ -> false
-      end)
-      |> Enum.map(fn [_, tag | _] -> tag end)
-
-    Memento.transaction!(fn ->
-      Event.delete_old(pkey, kind, dtags)
-    end)
-
-    {:noreply, state}
-  end
-
-  @spec create_event(Event.t() | map()) :: {:ok, Table.record()} | {:error, any()}
-  def create_event(event) do
-    GenServer.call(NoxirStore, {:create_event, event}, :infinity)
-  end
-
-  @spec replace_event(Event.t() | map(), type :: :replaceable | :parameterized) ::
-          {:ok, Table.record()} | {:error, any()}
-  def replace_event(event, type \\ :replaceable) do
-    GenServer.call(NoxirStore, {:replace_event, event, type}, :infinity)
-  end
-
-  @spec change_to_existing_atom_key(map()) :: map()
-  def change_to_existing_atom_key(map) do
-    for {key, val} <- map, into: %{} do
-      key =
-        try do
-          String.to_existing_atom(key)
-        rescue
-          _ -> key
-        end
-
-      {key, val}
-    end
-  end
-
-  @spec to_map(struct()) :: map()
-  def to_map(%{__meta__: Table} = map) do
-    map
-    |> Map.from_struct()
-    |> Map.delete(:__meta__)
-  end
+  @doc "Returns the configured store implementation module."
+  def impl, do: Application.get_env(:noxir, :store, Noxir.Store.ETS)
 end
