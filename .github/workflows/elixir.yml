@@ -12,8 +12,8 @@ on:
     branches: [ "master" ]
 
 env:
-  ELIXIR_VERSION: '1.16.0'
-  OTP_VERSION: '26.2.1'
+  ELIXIR_VERSION: '1.18.3'
+  OTP_VERSION: '27.0.1'
 
 permissions:
   contents: read
@@ -80,4 +80,21 @@ jobs:
         key: ${{ runner.os }}-elixir-${{ env.ELIXIR_VERSION }}-erlang-${{ env.OTP_VERSION }}-build-${{ hashFiles('**/mix.lock') }}-${{ hashFiles( '**/lib/**/*.{ex,eex}', '**/config/*.exs', '**/mix.exs' ) }}
 
     - run: mix compile
+      env:
+        MIX_ENV: test
     - run: mix test
+      env:
+        MIX_ENV: test
+    - run: mix credo --strict
+      env:
+        MIX_ENV: test
+    - name: Restore dialyzer PLT cache
+      uses: actions/cache@v4
+      with:
+        path: priv/plts
+        key: ${{ runner.os }}-elixir-${{ env.ELIXIR_VERSION }}-erlang-${{ env.OTP_VERSION }}-dialyzer-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-elixir-${{ env.ELIXIR_VERSION }}-erlang-${{ env.OTP_VERSION }}-dialyzer-
+    - run: mix dialyzer
+      env:
+        MIX_ENV: test

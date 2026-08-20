@@ -1,21 +1,22 @@
 defmodule Noxir.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @scm_url "https://github.com/kphrx/noxir"
 
   def project do
     [
       app: :noxir,
       version: version(),
-      elixir: "~> 1.15",
+      elixir: "~> 1.18",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       dialyzer: dialyzer(),
       source_url: @scm_url,
       docs: docs(),
       name: "Noxir",
-      description: "Nostr Relay in Elixir with Mnesia"
+      description: "Nostr Relay in Elixir with pluggable storage"
     ]
   end
 
@@ -28,7 +29,7 @@ defmodule Noxir.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger, :memento],
+      extra_applications: [:logger],
       mod: {Noxir.Application, []}
     ]
   end
@@ -109,24 +110,29 @@ defmodule Noxir.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:nostr_core, github: "jurraca/nostr_core"},
       {:bandit, "~> 1.12.4"},
       {:cors_plug, "~> 3.0"},
-      {:jason, "~> 1.4"},
-      {:memento, "~> 0.3"},
+      {:memento, "~> 0.3", optional: true},
       {:websock_adapter, "~> 0.5"},
       {:lib_secp256k1, "~> 0.7.0"},
+
+      # store: postgres (optional)
+      {:ecto_sql, "~> 3.12", optional: true, only: [:prod, :dev, :test]},
+      {:postgrex, "~> 0.19", optional: true, only: [:prod, :dev, :test]},
 
       # dev
       {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:erlex, github: "bradhanks/erlex", only: [:dev, :test], runtime: false, override: true},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.27", only: :docs, runtime: false}
+      {:ex_doc, "~> 0.27", only: :docs, runtime: false},
+      {:deps_nix, "~> 3.1.1", runtime: false}
     ]
   end
 
   defp dialyzer do
     [
-      plt_add_apps: [:mnesia],
+      plt_add_apps: [:mnesia, :ecto, :postgrex],
       flags: [
         :error_handling,
         :underspecs,
@@ -154,4 +160,7 @@ defmodule Noxir.MixProject do
       semver -> "v" <> semver
     end
   end
+
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
 end
