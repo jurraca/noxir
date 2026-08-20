@@ -1,7 +1,7 @@
 defmodule Noxir.Router do
   use Plug.Router
 
-  if Mix.env() == :dev do
+  if Application.compile_env(:noxir, :debug, false) do
     use Plug.Debugger, otp_app: :noxir
   end
 
@@ -13,7 +13,7 @@ defmodule Noxir.Router do
 
   plug(Plug.Head)
   plug(Noxir.Plug.Connect)
-  plug(Noxir.Plug.WebSocket, Noxir.Relay)
+    plug(Noxir.Plug.WebSocket, Noxir.Relay.Socket)
   plug(Noxir.Plug.NIP11)
 
   plug(:match)
@@ -38,23 +38,23 @@ defmodule Noxir.Router do
       true ->
         information =
           :noxir
-          |> Application.fetch_env!(:information)
+          |> Application.get_env(:information, [])
           |> Keyword.filter(fn {_, v} -> !is_nil(v) end)
 
         conn
         |> put_resp_content_type("application/nostr+json")
         |> send_resp(
           200,
-          Jason.encode!(%{
+          JSON.encode!(%{
             name: Keyword.get(information, :name, ""),
             description: Keyword.get(information, :description, ""),
             pubkey: Keyword.get(information, :pubkey, ""),
             contact: Keyword.get(information, :contact, ""),
-            supported_nips: [1, 11],
+            supported_nips: [1, 11, 42],
             software: Keyword.get(information, :software, ""),
             version: "v" <> to_string(Application.spec(:noxir, :vsn)),
             limitation: %{
-              authors_required: true
+              index_keys_required: Noxir.Policy.impl().index_keys_required?()
             }
           })
         )

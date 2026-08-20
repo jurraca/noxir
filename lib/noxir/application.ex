@@ -1,24 +1,24 @@
 defmodule Noxir.Application do
-  # See https://hexdocs.pm/elixir/Application.html
-  # for more information on OTP Applications
-  @moduledoc false
+  @moduledoc """
+  Application callback for dual-mode operation.
+
+  In standalone mode (`config :noxir, :standalone, true`), starts the full
+  supervision tree via `Noxir.Supervisor` with Bandit.
+
+  When embedded as a dependency, `:standalone` defaults to `false` and this
+  callback returns `:ignore` — the app is loaded but owns no processes. The
+  host app adds `Noxir.Supervisor` (or granular children) to its own
+  supervision tree.
+  """
 
   use Application
 
   @impl Application
   def start(_, _) do
-    Noxir.AuthConfig.init()
-
-    children = [
-      {Noxir.SubscriptionIndex, []},
-      {Noxir.Broadcaster, []},
-      {Noxir.Store, []},
-      {Bandit, scheme: :http, plug: Noxir.Router, port: 4000}
-    ]
-
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Noxir.Supervisor]
-    Supervisor.start_link(children, opts)
+    if Application.get_env(:noxir, :standalone, false) do
+      Noxir.Supervisor.start_link(start_bandit: true)
+    else
+      :ignore
+    end
   end
 end
