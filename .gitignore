@@ -30,5 +30,9 @@ noxir-*.tar
 /priv/plts/*.plt.hash
 compose.*.yml
 
+# Nix dev shell caches
+/.nix-mix/
+/.nix-hex/
+
 /.mix/
 /.hex/
