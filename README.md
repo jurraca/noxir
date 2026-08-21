@@ -128,6 +128,7 @@ The host app owns the `Ecto.Repo` supervision. See `Noxir.Store.Postgres` module
 | `OWNER_CONTACT` | `nil` | Contact URI (e.g. `mailto:...`) |
 | `AUTH_REQUIRED` | `"false"` | Require NIP-42 AUTH |
 | `ALLOWED_PUBKEYS` | `nil` | Comma-separated allowlist |
+| `INDEX_KEYS_REQUIRED` | `"authors"` | Comma-separated index keys REQ filters must include (e.g. `authors,#h`); empty string disables |
 | `PORT` | `4000` | HTTP/WebSocket port |
 
 ### Policy
@@ -135,7 +136,7 @@ The host app owns the `Ecto.Repo` supervision. See `Noxir.Store.Postgres` module
 The default policy (`Noxir.Policy.Default`) is backed by `:persistent_term`:
 - `auth_required?` — whether NIP-42 AUTH is mandatory
 - `allowed_pubkey?/1` — empty allowlist = allow all
-- `authors_required?` — all REQ filters must include `authors`
+- `index_keys_required?` — keys that REQ filters must include (e.g. `[:authors]`, `[:authors, :"#h"]`, `[]` for no requirement)
 - `classify_event/1` — kind 22242 and NIP-16 ephemeral → not stored
 
 Provide a custom policy via `config :noxir, :policy, MyApp.Policy`.

@@ -23,9 +23,19 @@ allowed_pubkeys =
     pubkeys -> String.split(pubkeys, ",") |> Enum.map(&String.trim/1)
   end
 
+# INDEX_KEYS_REQUIRED: comma-separated list of index keys that REQ filters
+# must include (e.g. "authors,#h" or "authors,kinds"). Empty string disables
+# the requirement. Defaults to "authors" if unset.
+index_keys_required =
+  case System.get_env("INDEX_KEYS_REQUIRED", "authors") do
+    "" -> []
+    keys -> keys |> String.split(",") |> Enum.map(fn key -> String.to_existing_atom(String.trim(key)) end)
+  end
+
 config :noxir, :policy_opts,
   required: auth_required,
-  allowed_pubkeys: allowed_pubkeys
+  allowed_pubkeys: allowed_pubkeys,
+  index_keys_required: index_keys_required
 
 if port = System.get_env("PORT", "4000") |> Integer.parse() do
   config :noxir, :port, port |> elem(0)
