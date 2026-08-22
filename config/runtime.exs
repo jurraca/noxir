@@ -29,13 +29,43 @@ allowed_pubkeys =
 index_keys_required =
   case System.get_env("INDEX_KEYS_REQUIRED", "authors") do
     "" -> []
-    keys -> keys |> String.split(",") |> Enum.map(fn key -> String.to_existing_atom(String.trim(key)) end)
+    keys ->
+      keys
+      |> String.split(",")
+      |> Enum.map(fn key ->
+        key = String.trim(key)
+        if String.starts_with?(key, "#") do
+          :"#{key}"
+        else
+          String.to_existing_atom(key)
+        end
+      end)
   end
 
 config :noxir, :policy_opts,
   required: auth_required,
   allowed_pubkeys: allowed_pubkeys,
   index_keys_required: index_keys_required
+
+# SUBSCRIPTION_INDEX_KEYS: comma-separated list of index keys to route subscriptions by.
+# For a community relay, index by author and channel (#h). Default: [:authors].
+subscription_index_keys =
+  case System.get_env("SUBSCRIPTION_INDEX_KEYS", "authors,#h") do
+    "" -> []
+    keys ->
+      keys
+      |> String.split(",")
+      |> Enum.map(fn key ->
+        key = String.trim(key)
+        if String.starts_with?(key, "#") do
+          :"#{key}"
+        else
+          String.to_existing_atom(key)
+        end
+      end)
+  end
+
+config :noxir, :subscription_index_keys, subscription_index_keys
 
 if port = System.get_env("PORT", "4000") |> Integer.parse() do
   config :noxir, :port, port |> elem(0)
