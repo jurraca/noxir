@@ -24,10 +24,11 @@ allowed_pubkeys =
   end
 
 # INDEX_KEYS_REQUIRED: comma-separated list of index keys that REQ filters
-# must include (e.g. "authors,#h" or "authors,kinds"). Empty string disables
-# the requirement. Defaults to "authors" if unset.
+# must include (e.g. "authors,#h" or "authors,kinds"). Unset: derives from
+# SUBSCRIPTION_INDEX_KEYS. Empty string disables the requirement.
 index_keys_required =
-  case System.get_env("INDEX_KEYS_REQUIRED", "authors") do
+  case System.get_env("INDEX_KEYS_REQUIRED") do
+    nil -> nil
     "" -> []
     keys ->
       keys
@@ -42,13 +43,20 @@ index_keys_required =
       end)
   end
 
-config :noxir, :policy_opts,
-  required: auth_required,
-  allowed_pubkeys: allowed_pubkeys,
-  index_keys_required: index_keys_required
+policy_opts = [required: auth_required, allowed_pubkeys: allowed_pubkeys]
 
-# SUBSCRIPTION_INDEX_KEYS: comma-separated list of index keys to route subscriptions by.
-# For a community relay, index by author and channel (#h). Default: [:authors].
+policy_opts =
+  if index_keys_required do
+    Keyword.put(policy_opts, :index_keys_required, index_keys_required)
+  else
+    policy_opts
+  end
+
+config :noxir, :policy_opts, policy_opts
+
+# SUBSCRIPTION_INDEX_KEYS: comma-separated index keys to route subscriptions by
+# (pg groups). Any "#x" tag key works — e.g. "authors,#h,#e,#p" to also accept
+# thread (#e) and mention (#p) REQs. Default: [:authors].
 subscription_index_keys =
   case System.get_env("SUBSCRIPTION_INDEX_KEYS", "authors,#h") do
     "" -> []

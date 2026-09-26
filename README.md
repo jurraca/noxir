@@ -2,11 +2,11 @@
 
 Nostr relay in Elixir. Pluggable storage backends, OTP supervision, NostrCore-based protocol handling.
 
-Dual-mode: run standalone or embed in another Elixir application without auto-starting supervision trees.
+Run standalone or embed in another Elixir application without auto-starting supervision trees.
 
 ## Features
 
-- NIP-01 (protocol), NIP-11 (relay info), NIP-42 (auth), NIP-09 (deletion), NIP-16 (kind classification)
+- NIP-11 (relay info), NIP-42 (auth), NIP-09 (deletion), NIP-16 (kind classification)
 - `WebSock` handler on [Bandit](https://github.com/mtrudel/bandit) (pure Elixir HTTP/WebSocket)
 - [NostrCore](https://github.com/jurraca/nostr_core) for event validation, wire parsing, Schnorr crypto
 - Pluggable storage: ETS (default, zero deps), Mnesia, Postgres
@@ -19,13 +19,6 @@ Dual-mode: run standalone or embed in another Elixir application without auto-st
 ### Standalone
 
 Run the relay directly — Noxir owns HTTP, storage, and the supervision tree.
-
-**Nix:**
-
-```console
-$ nix run
-# Relay running on port 4000
-```
 
 **Mix:**
 
@@ -128,7 +121,8 @@ The host app owns the `Ecto.Repo` supervision. See `Noxir.Store.Postgres` module
 | `OWNER_CONTACT` | `nil` | Contact URI (e.g. `mailto:...`) |
 | `AUTH_REQUIRED` | `"false"` | Require NIP-42 AUTH |
 | `ALLOWED_PUBKEYS` | `nil` | Comma-separated allowlist |
-| `INDEX_KEYS_REQUIRED` | `"authors"` | Comma-separated index keys REQ filters must include (e.g. `authors,#h`); empty string disables |
+| `SUBSCRIPTION_INDEX_KEYS` | `"authors,#h"` | Index keys that route live events to subscribers (any `#x` tag works, e.g. `authors,#h,#e,#p`) |
+| `INDEX_KEYS_REQUIRED` | unset | Keys REQ filters must include (any-of). Unset: same as `SUBSCRIPTION_INDEX_KEYS`; empty string disables |
 | `PORT` | `4000` | HTTP/WebSocket port |
 
 ### Policy
@@ -136,7 +130,7 @@ The host app owns the `Ecto.Repo` supervision. See `Noxir.Store.Postgres` module
 The default policy (`Noxir.Policy.Default`) is backed by `:persistent_term`:
 - `auth_required?` — whether NIP-42 AUTH is mandatory
 - `allowed_pubkey?/1` — empty allowlist = allow all
-- `index_keys_required?` — keys that REQ filters must include (e.g. `[:authors]`, `[:authors, :"#h"]`, `[]` for no requirement)
+- `index_keys_required?` — keys that REQ filters must include (any-of). Defaults to `subscription_index_keys`; `[]` disables the requirement — but then unindexed REQs get historical results without live events
 - `classify_event/1` — kind 22242 and NIP-16 ephemeral → not stored
 
 Provide a custom policy via `config :noxir, :policy, MyApp.Policy`.

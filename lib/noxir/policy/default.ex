@@ -5,6 +5,11 @@ defmodule Noxir.Policy.Default do
   Auth allowlist can be updated at runtime via `add_pubkey/1`, `remove_pubkey/1`,
   `set_pubkeys/1`, `clear_pubkeys/0`. Reads are lock-free (important since
   `allowed_pubkey?/1` is called on every EVENT and REQ).
+
+  REQ filters must include at least one of the configured `index_keys_required`
+  (any-of). When the key is not set it derives from `:subscription_index_keys`;
+  `[]` disables the requirement — but then unindexed REQs receive historical
+  results without live events.
   """
 
   @behaviour Noxir.Policy
@@ -26,7 +31,7 @@ defmodule Noxir.Policy.Default do
 
     :persistent_term.put(
       @index_keys_required_key,
-      Keyword.get(opts, :index_keys_required, [:authors])
+      derive_index_keys(Keyword.get(opts, :index_keys_required, :derive))
     )
 
     :ok
@@ -60,11 +65,13 @@ defmodule Noxir.Policy.Default do
     required = index_keys_required?()
 
     if required != [] and not filters_have_index_keys?(filters, required) do
-      {:error, "rejected: at least an author, tag or kind is required"}
+      {:error, "rejected: at least one of #{format_keys(required)} required"}
     else
       :ok
     end
   end
+
+  defp format_keys(keys), do: Enum.map_join(keys, ", ", &Atom.to_string/1)
 
   defp filters_have_index_keys?([], _required), do: false
 
@@ -90,6 +97,11 @@ defmodule Noxir.Policy.Default do
       false
     end
   end
+
+  # Unset (or :derive) follows the routing keys — a requirement that isn't
+  # indexed would silently drop live events. Validated at boot by Noxir.Supervisor.
+  defp derive_index_keys(keys) when is_list(keys), do: keys
+  defp derive_index_keys(_), do: Noxir.SubscriptionRegistry.index_keys()
 
   # Runtime management
 

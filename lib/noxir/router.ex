@@ -13,7 +13,7 @@ defmodule Noxir.Router do
 
   plug(Plug.Head)
   plug(Noxir.Plug.Connect)
-    plug(Noxir.Plug.WebSocket, Noxir.Relay.Socket)
+  plug(Noxir.Plug.WebSocket, Noxir.Relay.Socket)
   plug(Noxir.Plug.NIP11)
 
   plug(:match)

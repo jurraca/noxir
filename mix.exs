@@ -115,7 +115,7 @@ defmodule Noxir.MixProject do
       {:cors_plug, "~> 3.0"},
       {:memento, "~> 0.3", optional: true},
       {:websock_adapter, "~> 0.5"},
-      {:lib_secp256k1, "~> 0.7.0"},
+      {:lib_secp256k1, "~> 0.8.0"},
 
       # store: postgres (optional)
       {:ecto_sql, "~> 3.12", optional: true, only: [:prod, :dev, :test]},

@@ -94,14 +94,14 @@ defmodule Noxir.SubscriptionRegistryTest do
       assert_received {:event, ^event}
     end
 
-    test "excludes the sender" do
+    test "echoes to the sender (self-echo is standard Nostr behavior)" do
       pid = self()
       SubscriptionRegistry.register(pid, "sub1", [%Filter{authors: [Fixtures.pubkey()]}])
 
       event = Fixtures.signed_event()
       SubscriptionRegistry.dispatch(event, pid)
 
-      refute_received {:event, _}
+      assert_received {:event, ^event}
     end
   end
 

@@ -14,8 +14,8 @@ config :noxir, :store, Noxir.Store.ETS
 config :noxir, :policy, Noxir.Policy.Default
 config :noxir, :policy_opts,
   required: false,
-  allowed_pubkeys: [],
-  index_keys_required: [:authors]
+  allowed_pubkeys: []
+
 
 config :noxir, :subscription_index_keys, [:authors]
 config :noxir, :port, 4000

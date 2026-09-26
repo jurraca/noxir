@@ -17,7 +17,13 @@ defmodule Noxir.Policy do
   @doc "Whether a pubkey is allowed to post/subscribe."
   @callback allowed_pubkey?(pubkey :: binary()) :: boolean()
 
-  @doc "Returns the list of index keys that subscriptions must include (empty = no requirement)."
+  @doc """
+  Returns the list of index keys that subscriptions must include (empty = no requirement).
+
+  `Noxir.Supervisor` validates at boot that every required key is part of
+  `subscription_index_keys` — a requirement that isn't routed would make
+  subscriptions silently deaf.
+  """
   @callback index_keys_required?() :: [atom()]
 
   @doc """

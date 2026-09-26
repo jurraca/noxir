@@ -10,6 +10,9 @@ defmodule Noxir.SubscriptionRegistry do
 
   Subscriptions with no values for any configured index key are rejected by
   `Noxir.Policy` before reaching the registry — no wildcard group, no flooding.
+  By default the policy requirement derives from `subscription_index_keys`;
+  `Noxir.Supervisor` fails fast at boot if the requirement names keys that
+  aren't indexed.
 
   ETS-backed refcounting handles overlapping subscriptions from the same
   connection. `:pg` automatically removes dead processes from groups.
@@ -42,6 +45,9 @@ defmodule Noxir.SubscriptionRegistry do
   def pg_scope, do: @pg_scope
   def subs_table, do: @subs_table
   def refcount_table, do: @refcount_table
+
+  @doc "The index keys subscriptions are routed by."
+  def index_keys, do: Application.get_env(:noxir, :subscription_index_keys, [:authors])
 
   defmodule Owner do
     @moduledoc false
@@ -134,7 +140,7 @@ defmodule Noxir.SubscriptionRegistry do
   memory pressure from backpressured clients.
   """
   @spec dispatch(Event.t(), pid() | nil) :: :ok
-  def dispatch(%Event{} = event, from_pid) do
+  def dispatch(%Event{} = event, _from_pid) do
     event
     |> get_candidates()
     |> Enum.each(fn pid ->
@@ -165,8 +171,6 @@ defmodule Noxir.SubscriptionRegistry do
       nil -> true
     end
   end
-
-  defp index_keys, do: Application.get_env(:noxir, :subscription_index_keys, [:authors])
 
   # ── Extract index values from filters (on register) ────
 

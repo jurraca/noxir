@@ -51,6 +51,13 @@ defmodule Noxir.Policy.DefaultTest do
     test "returns configured keys" do
       assert Default.index_keys_required?() == [:authors]
     end
+
+    test "derives from subscription_index_keys when unset" do
+      on_exit(fn -> Application.put_env(:noxir, :subscription_index_keys, [:authors]) end)
+      Application.put_env(:noxir, :subscription_index_keys, [:authors, :"#h"])
+      Default.init(required: false, allowed_pubkeys: [])
+      assert Default.index_keys_required?() == [:authors, :"#h"]
+    end
   end
 
   describe "classify_event/1" do

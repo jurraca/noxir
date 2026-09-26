@@ -52,6 +52,8 @@ defmodule Noxir.Supervisor do
       Keyword.get(opts, :policy_opts, Application.get_env(:noxir, :policy_opts, []))
     )
 
+    validate_index_config!(policy)
+
     store = Keyword.get(opts, :store, Noxir.Store.impl())
     start_bandit = Keyword.get(opts, :start_bandit, false)
     port = Keyword.get(opts, :port, Application.get_env(:noxir, :port, 4000))
@@ -78,5 +80,30 @@ defmodule Noxir.Supervisor do
       end
 
     Supervisor.init(children, strategy: :rest_for_one)
+  end
+
+  @doc """
+  Fails fast when required index keys aren't in the subscription index keys.
+
+  A requirement that isn't routed makes affected subscriptions silently deaf
+  (no pg group to join), so misconfiguration is a boot error, not a warning.
+  """
+  @spec validate_index_config!(policy :: module()) :: :ok
+  def validate_index_config!(policy \\ Noxir.Policy.impl()) do
+    required = policy.index_keys_required?()
+    indexed = Noxir.SubscriptionRegistry.index_keys()
+    unknown = required -- indexed
+
+    if unknown != [] do
+      raise ArgumentError, """
+      index_keys_required #{inspect(required)} includes keys that are not in \
+      subscription_index_keys #{inspect(indexed)}: #{inspect(unknown)}.
+
+      Subscriptions matching only these keys would receive no live events. \
+      Add the keys to :subscription_index_keys or remove them from the requirement.
+      """
+    end
+
+    :ok
   end
 end
