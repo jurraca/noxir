@@ -21,7 +21,6 @@ if Code.ensure_loaded?(Ecto.Query) do
 
       create index(:nostr_events, [:pubkey])
       create index(:nostr_events, [:kind])
-      create index(:nostr_events, [:created_at])
       create index(:nostr_events, [:pubkey, :kind])
       # GIN index for tag filtering
       create index(:nostr_events, ["tags"], using: :gin)
