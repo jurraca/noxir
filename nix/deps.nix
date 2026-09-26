@@ -409,7 +409,7 @@ let
 
       lib_secp256k1 =
         let
-          version = "0.7.2";
+          version = "0.8.0";
           drv = buildMix {
             inherit version;
             name = "lib_secp256k1";
@@ -418,7 +418,7 @@ let
             src = fetchHex {
               inherit version;
               pkg = "lib_secp256k1";
-              sha256 = "120ff74f586bfb22b95ac8039dbfd096a31ab1ffaab56d6b8d3474fd128ac43f";
+              sha256 = "13da3da4cdb85eb660cb743ce43f2538743e92312ad4444cb6bdd53f5c31c643";
             };
 
             beamDeps = [

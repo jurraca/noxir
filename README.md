@@ -175,6 +175,39 @@ $ nix build
 $ ./result/bin/noxir start
 ```
 
+Note: the release ships without a distribution cookie (`releases/COOKIE` is
+stripped from the store path), so set `RELEASE_COOKIE` when starting,
+e.g. `RELEASE_COOKIE=noxir ./result/bin/noxir start`.
+
+### NixOS module
+
+The flake exposes a NixOS module under `nixosModules.default`:
+
+```nix
+# flake.nix
+inputs.noxir.url = "github:kphrx/noxir";
+```
+
+```nix
+# configuration.nix
+{ inputs, ... }: {
+  imports = [ inputs.noxir.nixosModules.default ];
+
+  services.noxir = {
+    enable = true;
+    openFirewall = true;
+    relayName = "my relay";
+    ownerPubkey = "<hex pubkey>";
+    indexKeysRequired = [ "authors" "#e" ];
+  };
+}
+```
+
+Options map 1:1 to the runtime environment variables (see
+[Configuration](#configuration)); any extra env vars can be set via
+`services.noxir.environment`. The service runs as a dynamic user with
+`StateDirectory = /var/lib/noxir` and systemd sandboxing enabled.
+
 ## Architecture
 
 ```

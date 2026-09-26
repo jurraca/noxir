@@ -6,9 +6,13 @@
   };
 
   outputs = { self, nixpkgs }: let
-    overlay = final: prev: rec {
-      beamPackages = prev.beamMinimal29Packages;
-      elixir = beamPackages.elixir_1_20;
+    overlay = final: prev: let
+      beamPackages = prev.beamMinimal29Packages.extend (self: super: {
+        elixir = super.elixir_1_20;
+      });
+    in {
+      inherit beamPackages;
+      elixir = beamPackages.elixir;
       erlang = beamPackages.erlang;
       hex = beamPackages.hex;
     };
@@ -18,32 +22,24 @@
       "aarch64-linux"
     ];
 
-    nixpkgsFor = system:
+    pkgsFor = system:
       import nixpkgs {
         inherit system;
         overlays = [overlay];
       };
 
-    noxirMixRelease = system: let
-      pkgs = nixpkgsFor system;
-      beamPackages = pkgs.beamPackages;
-      mixNixDeps = import ./deps.nix {
-        inherit (pkgs) lib stdenv cmake extend lexbor fetchFromGitHub oniguruma pkg-config vips writeText;
-        inherit beamPackages;
-      };
-    in
+    noxir = pkgs:
       pkgs.beamPackages.mixRelease {
         pname = "noxir";
         version = "0.2.0";
         src = ./.;
-        inherit mixNixDeps;
+        mixNixDeps = pkgs.callPackages ./nix/deps.nix {};
       };
 
     # Docker image built entirely from Nix. No Dockerfile needed.
     # Load with: docker load < $(nix build .#dockerImage --print-out-paths)/stream-noxir.tar.gz
-    noxirDocker = system: let
-      pkgs = nixpkgsFor system;
-      release = noxirMixRelease system;
+    noxirDocker = pkgs: let
+      release = noxir pkgs;
     in
       pkgs.dockerTools.streamLayeredImage {
         name = "noxir";
@@ -60,27 +56,35 @@
           Env = [
             "LANG=C.utf8"
             "MIX_ENV=prod"
+            "RELEASE_COOKIE=noxir"
           ];
           WorkingDir = "/app";
         };
       };
   in {
     devShells = forAllSystems (system: let
-      pkgs = nixpkgsFor system;
+      pkgs = pkgsFor system;
     in {
-      default = pkgs.callPackage ./shell.nix {};
+      default = pkgs.callPackage ./nix/shell.nix {};
     });
 
-    packages = forAllSystems (system: {
-      default = noxirMixRelease system;
-      dockerImage = noxirDocker system;
+    packages = forAllSystems (system: let
+      pkgs = pkgsFor system;
+    in {
+      default = noxir pkgs;
+      dockerImage = noxirDocker pkgs;
     });
 
     apps = forAllSystems (system: {
       default = {
         type = "app";
-        program = "${noxirMixRelease system}/bin/noxir";
+        program = "${noxir (pkgsFor system)}/bin/noxir";
       };
     });
+
+    nixosModules.default = {
+      imports = [./nix/module.nix];
+      _module.args.noxirFlake = self;
+    };
   };
 }
