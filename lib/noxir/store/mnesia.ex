@@ -1,4 +1,5 @@
-defmodule Noxir.Store.Mnesia do
+if Code.ensure_loaded?(Memento) do
+  defmodule Noxir.Store.Mnesia do
   @moduledoc """
   Mnesia-backed store via Memento.
 
@@ -368,4 +369,5 @@ defmodule Noxir.Store.Mnesia do
       sig: record.sig
     }
   end
+end
 end

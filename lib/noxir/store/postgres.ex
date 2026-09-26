@@ -1,4 +1,5 @@
-defmodule Noxir.Store.Postgres do
+if Code.ensure_loaded?(Ecto.Query) do
+  defmodule Noxir.Store.Postgres do
   @moduledoc """
   PostgreSQL-backed store via Ecto.
 
@@ -302,4 +303,5 @@ defmodule Noxir.Store.Postgres do
       raise "Noxir.Store.Postgres requires :ecto_sql and :postgrex. Add them to your deps."
     end
   end
+end
 end

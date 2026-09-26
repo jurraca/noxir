@@ -5,20 +5,22 @@ defmodule Noxir.Application do
   In standalone mode (`config :noxir, :standalone, true`), starts the full
   supervision tree via `Noxir.Supervisor` with Bandit.
 
-  When embedded as a dependency, `:standalone` defaults to `false` and this
-  callback returns `:ignore` — the app is loaded but owns no processes. The
-  host app adds `Noxir.Supervisor` (or granular children) to its own
-  supervision tree.
+  When embedded as a dependency, `:standalone` defaults to `false` and the
+  application starts an empty supervisor — the host app adds `Noxir.Supervisor`
+  (or granular children) to its own supervision tree.
   """
 
   use Application
 
   @impl Application
   def start(_, _) do
-    if Application.get_env(:noxir, :standalone, false) do
-      Noxir.Supervisor.start_link(start_bandit: true)
-    else
-      :ignore
-    end
+    children =
+      if Application.get_env(:noxir, :standalone, false) do
+        [{Noxir.Supervisor, start_bandit: true}]
+      else
+        []
+      end
+
+    Supervisor.start_link(children, strategy: :one_for_one, name: Noxir.AppSup)
   end
 end
