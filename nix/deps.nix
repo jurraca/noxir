@@ -192,7 +192,7 @@ let
           drv = buildMix {
             inherit version;
             name = "bandit";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -217,7 +217,7 @@ let
           drv = buildMix {
             inherit version;
             name = "bechamel";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -234,7 +234,7 @@ let
           drv = buildMix {
             inherit version;
             name = "cors_plug";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -255,7 +255,7 @@ let
           drv = buildMix {
             inherit version;
             name = "db_connection";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -276,7 +276,7 @@ let
           drv = buildMix {
             inherit version;
             name = "decimal";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -293,7 +293,7 @@ let
           drv = buildMix {
             inherit version;
             name = "deps_nix";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -315,7 +315,7 @@ let
           drv = buildMix {
             inherit version;
             name = "ecto";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -337,7 +337,7 @@ let
           drv = buildMix {
             inherit version;
             name = "ecto_sql";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -362,7 +362,7 @@ let
           drv = buildMix {
             inherit version;
             name = "elixir_make";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -379,7 +379,7 @@ let
           drv = buildMix {
             inherit version;
             name = "ex_nar";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -396,7 +396,7 @@ let
           drv = buildMix {
             inherit version;
             name = "hpax";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -413,7 +413,7 @@ let
           drv = buildMix {
             inherit version;
             name = "lib_secp256k1";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -434,7 +434,7 @@ let
           drv = buildMix {
             inherit version;
             name = "memento";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -451,7 +451,7 @@ let
           drv = buildMix {
             inherit version;
             name = "mime";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -468,7 +468,7 @@ let
           drv = buildMix {
             inherit version;
             name = "mint";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -489,7 +489,7 @@ let
           drv = buildMix {
             inherit version;
             name = "nostr_core";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchFromGitHub {
               owner = "jurraca";
@@ -512,7 +512,7 @@ let
           drv = buildMix {
             inherit version;
             name = "plug";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -535,7 +535,7 @@ let
           drv = buildMix {
             inherit version;
             name = "plug_crypto";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -552,7 +552,7 @@ let
           drv = buildMix {
             inherit version;
             name = "postgrex";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -590,7 +590,7 @@ let
           drv = buildMix {
             inherit version;
             name = "thousand_island";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -611,7 +611,7 @@ let
           drv = buildMix {
             inherit version;
             name = "websock";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;
@@ -628,7 +628,7 @@ let
           drv = buildMix {
             inherit version;
             name = "websock_adapter";
-            appConfigPath = ./config;
+            appConfigPath = ../config;
 
             src = fetchHex {
               inherit version;

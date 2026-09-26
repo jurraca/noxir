@@ -146,6 +146,9 @@ in {
           MIX_ENV = "prod";
           # mixRelease strips releases/COOKIE; single-node so any value works
           RELEASE_COOKIE = "noxir";
+          # no epmd/listening port for a single-node relay; override if you
+          # need Mnesia disc tables or Erlang clustering
+          RELEASE_DISTRIBUTION = "none";
           PORT = toString cfg.port;
           RELAY_NAME = cfg.relayName;
           RELAY_DESC = cfg.relayDescription;

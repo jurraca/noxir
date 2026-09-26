@@ -57,6 +57,7 @@
             "LANG=C.utf8"
             "MIX_ENV=prod"
             "RELEASE_COOKIE=noxir"
+            "RELEASE_DISTRIBUTION=none"
           ];
           WorkingDir = "/app";
         };

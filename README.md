@@ -225,7 +225,9 @@ inputs.noxir.url = "github:jurraca/noxir";
 Options map 1:1 to the runtime environment variables (see
 [Configuration](#configuration)); any extra env vars can be set via
 `services.noxir.environment`. The service runs as a dynamic user with
-`StateDirectory = /var/lib/noxir` and systemd sandboxing enabled.
+`StateDirectory = /var/lib/noxir` and systemd sandboxing enabled. The service
+sets `RELEASE_DISTRIBUTION=none` (no epmd, no listening port) — it needs to
+be unset if you use Mnesia disc tables or Erlang clustering.
 
 ## Architecture
 
