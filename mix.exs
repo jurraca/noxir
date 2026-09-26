@@ -121,18 +121,21 @@ defmodule Noxir.MixProject do
       {:ecto_sql, "~> 3.12", optional: true, only: [:prod, :dev, :test]},
       {:postgrex, "~> 0.19", optional: true, only: [:prod, :dev, :test]},
 
+      # store: sqlite (optional)
+      {:ecto_sqlite3, "~> 0.20", optional: true, only: [:prod, :dev, :test]},
+
       # dev
       {:credo, "~> 1.7.19", only: [:dev, :test], runtime: false},
       {:erlex, github: "bradhanks/erlex", only: [:dev, :test], runtime: false, override: true},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: :docs, runtime: false},
-      {:deps_nix, "~> 3.1.1", runtime: false}
+      {:deps_nix, "~> 3.1.1", only: :dev, runtime: false}
     ]
   end
 
   defp dialyzer do
     [
-      plt_add_apps: [:mnesia, :ecto, :postgrex],
+      plt_add_apps: [:mnesia, :ecto, :postgrex, :ecto_sqlite3],
       flags: [
         :error_handling,
         :underspecs,

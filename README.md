@@ -92,6 +92,7 @@ children = [
 |------|------|----------|
 | `Noxir.Store.ETS` | none (default) | Dev, test, small single-node relays |
 | `Noxir.Store.Mnesia` | `:memento` | Single-node with durability, BEAM-native |
+| `Noxir.Store.SQLite` | `:ecto_sql`, `:ecto_sqlite3` | Single-node with durability, zero external deps |
 | `Noxir.Store.Postgres` | `:ecto_sql`, `:postgrex` | Production, multi-node, large datasets |
 
 ```elixir
@@ -102,6 +103,12 @@ config :noxir, :store, Noxir.Store.ETS
 config :noxir, :store, Noxir.Store.Mnesia
 config :noxir, :mnesia_dir, "priv/mnesia"  # disc_copies; omit for ram-only
 config :noxir, :disc, true
+
+# SQLite (tables created at boot; host owns the Repo supervision)
+config :noxir, :store, Noxir.Store.SQLite
+config :noxir, :sqlite_repo, MyApp.Repo
+# MyApp.Repo is a supervised Ecto.Repo with the Ecto.Adapters.SQLite3 adapter;
+# point its :database at a persistent volume, e.g. "/data/noxir.db"
 
 # Postgres
 config :noxir, :store, Noxir.Store.Postgres
