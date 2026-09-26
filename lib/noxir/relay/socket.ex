@@ -115,6 +115,7 @@ defmodule Noxir.Relay.Socket do
           store_and_dispatch(event, opcode, state)
 
         :ephemeral ->
+          SubscriptionRegistry.dispatch(event, self())
           push_ok(event.id, true, "", opcode, state)
 
         {:reject, reason} ->

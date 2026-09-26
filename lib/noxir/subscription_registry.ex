@@ -123,7 +123,12 @@ defmodule Noxir.SubscriptionRegistry do
   def get_candidates(_), do: []
 
   @doc """
-  Dispatch an event to all matching subscribers except the sender.
+  Dispatch an event to all matching subscribers.
+
+  Self-echo is standard Nostr behavior — a client receives its own
+  events back through its subscriptions. The relay socket's
+  `handle_info({:event, event}, state)` already does per-subscription
+  filtering, so there's no feedback loop.
 
   Checks each candidate's mailbox depth and skips slow subscribers to prevent
   memory pressure from backpressured clients.
@@ -132,7 +137,6 @@ defmodule Noxir.SubscriptionRegistry do
   def dispatch(%Event{} = event, from_pid) do
     event
     |> get_candidates()
-    |> Enum.reject(&(&1 == from_pid))
     |> Enum.each(fn pid ->
       unless mailbox_overflow?(pid) do
         send(pid, {:event, event})
