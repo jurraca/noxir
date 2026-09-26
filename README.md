@@ -1,8 +1,11 @@
 # Noxir
 
-Nostr relay in Elixir. Pluggable storage backends, OTP supervision, NostrCore-based protocol handling.
+Nostr relay in Elixir.
 
+Pluggable storage backends, OTP supervision, PubSub'd subscriptions.
 Run standalone or embed in another Elixir application without auto-starting supervision trees.
+
+Forked from kphrx's [noxir](https://github.com/kphrx/noxir).
 
 ## Features
 
@@ -11,8 +14,6 @@ Run standalone or embed in another Elixir application without auto-starting supe
 - [NostrCore](https://github.com/jurraca/nostr_core) for event validation, wire parsing, Schnorr crypto
 - Pluggable storage: ETS (default, zero deps), Mnesia, Postgres
 - `pg`-based subscription fan-out with per-connection filter matching
-- `:persistent_term` policy for lock-free auth checks
-- `:rest_for_one` supervision — registry/store failures cascade correctly
 
 ## Usage
 
@@ -137,8 +138,19 @@ Provide a custom policy via `config :noxir, :policy, MyApp.Policy`.
 
 ### Multi-node distribution
 
-`Noxir.Distribution.Local` (default) is a no-op. For multi-node fan-out,
-provide a PubSub-based impl:
+Event fan-out to subscribers is local to each node (`SubscriptionRegistry` +
+`:pg` groups + `send/2`). When the relay runs on multiple nodes behind a load
+balancer, a client connected to node B won't receive events accepted on
+node A unless nodes forward inserts to each other. `Noxir.Distribution` is
+a behaviour so the transport stays pluggable
+(PubSub, Redis, ...) and the core carries no messaging dependency.
+`Noxir.Distribution.Local` (default) is a no-op for single-node setups.
+
+Yes, `:pg` groups already span cluster nodes and `send/2` delivers to remote
+pids, so cross-node dispatch mostly works without any of this. The module
+if for when you'd rather route inter-node traffic through your own
+backbone, or fan out once per node instead of N remote sends from the
+originating node.
 
 ```elixir
 config :noxir, :distribution, MyApp.Distribution.PubSub
@@ -155,7 +167,15 @@ defmodule MyApp.Distribution.PubSub do
 end
 ```
 
-On receiving nodes, call `Noxir.SubscriptionRegistry.dispatch(event, nil)`.
+Note the behaviour only covers the send half — the receiving side is up to
+the host. Subscribe to the topic and deliver locally:
+
+```elixir
+Phoenix.PubSub.subscribe(MyApp.PubSub, "noxir:events")
+
+# in the subscriber:
+{:noxir_event, event} -> Noxir.SubscriptionRegistry.dispatch(event, nil)
+```
 
 ## Development
 
@@ -165,7 +185,6 @@ On receiving nodes, call `Noxir.SubscriptionRegistry.dispatch(event, nil)`.
 $ nix develop -c mix deps.get
 $ nix develop -c mix test
 $ nix develop -c mix credo --strict
-$ nix develop -c mix dialyzer
 ```
 
 ### Build a release
@@ -185,7 +204,7 @@ The flake exposes a NixOS module under `nixosModules.default`:
 
 ```nix
 # flake.nix
-inputs.noxir.url = "github:kphrx/noxir";
+inputs.noxir.url = "github:jurraca/noxir";
 ```
 
 ```nix
