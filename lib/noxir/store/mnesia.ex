@@ -4,7 +4,7 @@ if Code.ensure_loaded?(Memento) do
   Mnesia-backed store via Memento.
 
   Supports `ram_copies` (default — data lost on restart) and `disc_copies`
-  (opt-in via `config :noxir, :mnesia_dir`).
+  (opt-in via `config :noxir, :store_opts, disc: true, mnesia_dir: "priv/mnesia"`).
 
   Tables:
 
@@ -72,12 +72,15 @@ if Code.ensure_loaded?(Memento) do
 
   @impl true
   def child_spec(opts) do
-    {mnesia_opts, rest} = Keyword.split(opts, [:disc, :mnesia_dir])
-    merged = Keyword.merge(Application.get_all_env(:noxir), mnesia_opts)
+    # App env is the base; passed opts (from `Noxir.Supervisor`) win.
+    merged =
+      Application.get_env(:noxir, :store_opts, [])
+      |> Keyword.merge(opts)
+      |> Keyword.take([:disc, :mnesia_dir])
 
     %{
       id: __MODULE__.Owner,
-      start: {__MODULE__.Owner, :start_link, [merged ++ rest]},
+      start: {__MODULE__.Owner, :start_link, [merged]},
       type: :worker
     }
   end

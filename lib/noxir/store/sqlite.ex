@@ -5,7 +5,7 @@ if Code.ensure_loaded?(Ecto.Query) do
 
     Requires `:ecto_sql` and `:ecto_sqlite3` as optional deps. The host app
     provides a supervised `Ecto.Repo` with the `Ecto.Adapters.SQLite3` adapter;
-    the repo module is configured via `config :noxir, :sqlite_repo`.
+    the repo module is configured via `config :noxir, :store_opts, repo: MyApp.Repo`.
 
     Tables are created at boot (idempotent `CREATE TABLE IF NOT EXISTS`) —
     the database lives in a single file, so point it at a persistent volume.
@@ -299,7 +299,7 @@ if Code.ensure_loaded?(Ecto.Query) do
     # ── Schema ──────────────────────────────────────────────
 
     @doc false
-    def repo, do: Application.fetch_env!(:noxir, :sqlite_repo)
+    def repo, do: Keyword.fetch!(Application.fetch_env!(:noxir, :store_opts), :repo)
 
     def ddl do
       [

@@ -6,7 +6,7 @@ defmodule Noxir.Store.SQLiteTest do
   alias Noxir.Test.Fixtures
 
   setup do
-    Application.put_env(:noxir, :sqlite_repo, Noxir.Test.SQLiteRepo)
+    Application.put_env(:noxir, :store_opts, repo: Noxir.Test.SQLiteRepo)
 
     db =
       Path.join(
@@ -17,6 +17,7 @@ defmodule Noxir.Store.SQLiteTest do
     Application.put_env(:noxir, Noxir.Test.SQLiteRepo, database: db)
 
     on_exit(fn ->
+      Application.delete_env(:noxir, :store_opts)
       File.rm_rf(db)
       File.rm_rf(db <> "-wal")
       File.rm_rf(db <> "-shm")

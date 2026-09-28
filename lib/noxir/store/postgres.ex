@@ -5,7 +5,7 @@ if Code.ensure_loaded?(Ecto.Query) do
 
   Requires `:ecto_sql` and `:postgrex` as optional deps. The host app provides
   a supervised `Ecto.Repo`; this store delegates to it. The repo module is
-  configured via `config :noxir, :postgres_repo, MyApp.Repo`.
+  configured via `config :noxir, :store_opts, repo: MyApp.Repo`.
 
   Schema:
 
@@ -295,7 +295,7 @@ if Code.ensure_loaded?(Ecto.Query) do
 
   # ── Helpers ─────────────────────────────────────────────
 
-  defp repo, do: Application.fetch_env!(:noxir, :postgres_repo)
+  defp repo, do: Keyword.fetch!(Application.fetch_env!(:noxir, :store_opts), :repo)
 
   defp ensure_loaded! do
     unless Code.ensure_loaded?(Ecto) do

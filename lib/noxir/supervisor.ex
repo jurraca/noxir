@@ -60,6 +60,7 @@ defmodule Noxir.Supervisor do
     validate_index_config!(policy)
 
     store = Keyword.get(opts, :store, Noxir.Store.impl())
+    store_opts = Keyword.get(opts, :store_opts, Application.get_env(:noxir, :store_opts, []))
     start_bandit = Keyword.get(opts, :start_bandit, false)
     port = Keyword.get(opts, :port, Application.get_env(:noxir, :port, 4000))
     plug = Keyword.get(opts, :plug, Noxir.Router)
@@ -67,7 +68,7 @@ defmodule Noxir.Supervisor do
 
     children = [
       {Noxir.SubscriptionRegistry.Owner, []},
-      store.child_spec([])
+      store.child_spec(store_opts)
     ]
 
     children =
