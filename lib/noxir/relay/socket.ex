@@ -7,7 +7,10 @@ defmodule Noxir.Relay.Socket do
   `Noxir.SubscriptionRegistry`, and enforces policy via `Noxir.Policy`.
 
   Per-connection state holds the NIP-42 auth challenge and authenticated pubkey
-  (ephemeral — not persisted to storage).
+  (ephemeral — not persisted to storage), and the connection limits —
+  `max_subscriptions_per_connection` and `max_events_per_minute` — resolved
+  once at init from `config :noxir, :limits` app env, overridable via the
+  WebSock init opts (`WebSockAdapter.upgrade/4` third argument).
   """
 
   @behaviour WebSock
@@ -19,25 +22,27 @@ defmodule Noxir.Relay.Socket do
 
   @ping_interval 50_000
   @first_ping 30_000
+  @default_limits [max_subscriptions_per_connection: 100, max_events_per_minute: 1_000]
 
-  defp max_subscriptions do
-    Application.get_env(:noxir, :max_subscriptions_per_connection, 100)
-  end
-
-  defp max_events_per_minute do
-    Application.get_env(:noxir, :max_events_per_minute, 1_000)
+  defp limits(opts) do
+    opts
+    |> Keyword.get(:limits, Application.get_env(:noxir, :limits, []))
+    |> then(&Keyword.merge(@default_limits, &1))
   end
 
   @impl WebSock
   def init(opts) do
     Process.send_after(self(), :ping, @first_ping)
 
+    limits = limits(opts)
+
     {:ok,
      %{
        auth_challenge: nil,
        authenticated_pubkey: nil,
        subscriptions: %{},
-       rate_tokens: max_events_per_minute() * 1.0,
+       limits: limits,
+       rate_tokens: limits[:max_events_per_minute] * 1.0,
        rate_last_refill: System.monotonic_time(:millisecond),
        opts: opts
      }}
@@ -138,7 +143,7 @@ defmodule Noxir.Relay.Socket do
   end
 
   defp check_rate_limit(state) do
-    max = max_events_per_minute()
+    max = state.limits[:max_events_per_minute]
 
     if max == 0 do
       {:ok, state}
@@ -236,7 +241,7 @@ defmodule Noxir.Relay.Socket do
       Policy.impl().auth_required?() and state.authenticated_pubkey == nil ->
         send_auth_challenge(opcode, state)
 
-      map_size(state.subscriptions) >= max_subscriptions() ->
+      map_size(state.subscriptions) >= state.limits[:max_subscriptions_per_connection] ->
         push_notice("rejected: too many subscriptions", opcode, state)
 
       true ->

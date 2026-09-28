@@ -30,10 +30,15 @@ defmodule Noxir.Supervisor do
     * `:port` — HTTP port (default: `4000` or `config :noxir, :port`)
     * `:plug` — custom plug for Bandit (default: `Noxir.Router`)
     * `:store` — store module (default: `config :noxir, :store` or `Noxir.Store.ETS`)
+    * `:store_opts` — opts for the store's `child_spec/1` (default: `config :noxir, :store_opts` or `[]`; e.g. `[repo: MyApp.Repo]` or `[disc: true, mnesia_dir: "priv/mnesia"]`)
     * `:policy_opts` — opts for `Noxir.Policy.impl().init/1`
     * `:max_connections` — max concurrent WebSocket connections (default: `10_000` or `config :noxir, :max_connections`)
-    * `:max_subscriptions_per_connection` — per-conn sub cap (default: `100` or `config :noxir, :max_subscriptions_per_connection`)
     * `:name` — supervisor name (default: `Noxir.Supervisor`)
+
+  Connection limits are not supervisor options — they are resolved per
+  connection from `config :noxir, :limits` app env (default:
+  `[max_subscriptions_per_connection: 100, max_events_per_minute: 1000]`),
+  overridable via the WebSock init opts passed to `WebSockAdapter.upgrade/4`.
   """
 
   use Supervisor

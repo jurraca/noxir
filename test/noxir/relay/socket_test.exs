@@ -96,7 +96,7 @@ defmodule Noxir.Relay.SocketTest do
 
   describe "handle_in REQ subscription cap" do
     test "rejects REQ when per-connection subscription limit is reached" do
-      Application.put_env(:noxir, :max_subscriptions_per_connection, 2)
+      Application.put_env(:noxir, :limits, max_subscriptions_per_connection: 2)
 
       state = init_state()
 
@@ -112,13 +112,13 @@ defmodule Noxir.Relay.SocketTest do
       {:ok, {:notice, message}} = Message.parse(msg)
       assert String.contains?(message, "too many subscriptions")
 
-      Application.put_env(:noxir, :max_subscriptions_per_connection, 100)
+      Application.delete_env(:noxir, :limits)
     end
   end
 
   describe "handle_in EVENT rate limiting" do
     test "events within rate limit are accepted" do
-      Application.put_env(:noxir, :max_events_per_minute, 10)
+      Application.put_env(:noxir, :limits, max_events_per_minute: 10)
 
       state = init_state()
 
@@ -129,11 +129,11 @@ defmodule Noxir.Relay.SocketTest do
       {:ok, {:ok, id, true, _}} = Message.parse(msg)
       assert id == event.id
 
-      Application.put_env(:noxir, :max_events_per_minute, 1_000)
+      Application.delete_env(:noxir, :limits)
     end
 
     test "events exceeding rate limit are rejected" do
-      Application.put_env(:noxir, :max_events_per_minute, 2)
+      Application.put_env(:noxir, :limits, max_events_per_minute: 2)
 
       state = init_state()
 
@@ -152,7 +152,7 @@ defmodule Noxir.Relay.SocketTest do
       {:ok, {:ok, _, false, reason}} = Message.parse(msg)
       assert String.contains?(reason, "rate-limited")
 
-      Application.put_env(:noxir, :max_events_per_minute, 1_000)
+      Application.delete_env(:noxir, :limits)
     end
   end
 

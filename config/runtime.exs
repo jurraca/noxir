@@ -87,10 +87,18 @@ if max_conn = System.get_env("MAX_CONNECTIONS", "10000") |> Integer.parse() do
   config :noxir, :max_connections, max_conn |> elem(0)
 end
 
-if max_subs = System.get_env("MAX_SUBSCRIPTIONS_PER_CONNECTION", "100") |> Integer.parse() do
-  config :noxir, :max_subscriptions_per_connection, max_subs |> elem(0)
-end
+# Connection limits: per-connection subscription cap and token-bucket EVENT rate
+# limit. `MAX_EVENTS_PER_MINUTE=0` disables rate limiting.
+limits =
+  [
+    {:max_subscriptions_per_connection, System.get_env("MAX_SUBSCRIPTIONS_PER_CONNECTION", "100")},
+    {:max_events_per_minute, System.get_env("MAX_EVENTS_PER_MINUTE", "1000")}
+  ]
+  |> Enum.flat_map(fn {key, value} ->
+    case Integer.parse(value) do
+      {n, _} -> [{key, n}]
+      :error -> []
+    end
+  end)
 
-if max_events = System.get_env("MAX_EVENTS_PER_MINUTE", "1000") |> Integer.parse() do
-  config :noxir, :max_events_per_minute, max_events |> elem(0)
-end
+config :noxir, :limits, limits
