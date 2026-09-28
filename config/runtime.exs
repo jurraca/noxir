@@ -1,6 +1,10 @@
 import Config
 
-config :noxir, :standalone, true
+# Standalone boot (own supervision tree + Bandit); never in the test environment,
+# which starts `Noxir.Supervisor` explicitly via test/test_helper.exs.
+if config_env() != :test do
+  config :noxir, :standalone, true
+end
 
 information =
   Keyword.filter(

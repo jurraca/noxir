@@ -2,7 +2,7 @@ defmodule Noxir.MixProject do
   use Mix.Project
 
   @version "0.2.0"
-  @scm_url "https://github.com/kphrx/noxir"
+  @scm_url "https://github.com/jurraca/noxir"
 
   def project do
     [
